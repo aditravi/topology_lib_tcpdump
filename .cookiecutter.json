@@ -1,0 +1,11 @@
+{
+    "library_name": "topology_lib_tcpdump",
+    "author": "Hewlett Packard Enterprise Development LP",
+    "email": "hpe-networking@lists.hp.com",
+    "repo_url": "https://github.com/HPENetworking/topology_lib_{{ cookiecutter.library_name }}",
+    "doc_url": "{{ cookiecutter.repo_url }}/tree/master/doc",
+    "project_name": "Tcpdump library",
+    "short_description": "Tcpdump library",
+    "year": "2016",
+    "version": "0.1.0"
+}
