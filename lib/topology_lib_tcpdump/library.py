@@ -64,7 +64,8 @@ def tcpdump_capture_interface(sw, options, interface_id, wait_time, check_cpu):
                           .format(**locals()),
                           'bash')
         cpu_samples = top_output.split('\n')
-        del cpu_samples[0]
+        if "top" in cpu_samples[0]:
+            del cpu_samples[0]
         for cpu_idle in cpu_samples:
             cpu_util = cpu_util + (100 - float(cpu_idle))
         cpu_util = str(cpu_util/3)
@@ -73,7 +74,8 @@ def tcpdump_capture_interface(sw, options, interface_id, wait_time, check_cpu):
     
     sw('killall tcpdump &'.format(**locals()),
         'bash')
-    return cpu_util
+    dict = {'cpu_util': cpu_util};    
+    return dict
 
 __all__ = [
     'tcpdump_capture_interface',
