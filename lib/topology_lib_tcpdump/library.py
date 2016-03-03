@@ -31,17 +31,25 @@ import time
 # Add your library functions here.
 
 def tcpdump_rate(sw):
-    total_packets = sw('cat /tmp/interface.cap | wc -l', 'bash')
-    total_packets = int(total_packets.strip()) - 1
-    last_packet = sw('tail -2 /tmp/interface.cap | head -1', 'bash')
-    fields = last_packet.split()
-    print(fields)
-    timestamp = datetime.datetime.strptime(fields[0], '%H:%M:%S.%f').time()
-    print(timestamp)
+    rate = 0
+    total_packets = 0
+    total_lines = sw('cat /tmp/interface.cap | wc -l', 'bash')
+    for i in range(1, int(total_lines)):
+        sw_cat = 'tail -' + str(i) + ' /tmp/interface.cap | head -1'
+        packet_info = sw(sw_cat, 'bash')
+        if "packets captured" in packet_info:
+            total_packets = packet_info.split()[0]
+        time = re.match(r"^\d\d?:\d\d?:\d\d?\.\d+", packet_info)
+        if time:
+            fields = packet_info.split()
+            timestamp = datetime.datetime.strptime(fields[0],
+                                                   '%H:%M:%S.%f').time()
+            break
     msec = (timestamp.hour * 60 * 60 + timestamp.minute * 60 +
             timestamp.second) * 1000 + (timestamp.microsecond / 1000)
-    rate = total_packets * 1000 / msec
+    rate = int(total_packets) * 1000 / msec
     return rate
+
 
 def tcpdump_capture_interface(sw, options, interface_id, wait_time, check_cpu):
     cmd_output = sw('ip netns exec swns tcpdump -D'.format(**locals()),
@@ -54,20 +62,21 @@ def tcpdump_capture_interface(sw, options, interface_id, wait_time, check_cpu):
 
     sw('ip netns exec swns tcpdump -ni ' + result['linux_interface'] +
         options + ' -ttttt '
-        '> /tmp/interface.cap &'.format(**locals()),
+        '> /tmp/interface.cap 2>&1 &'.format(**locals()),
         'bash')
     time.sleep(wait_time)
     cpu_util = 0
     if check_cpu:
-        top_output = sw('top -bn3 | grep "Cpu(s)" |'
-                          ' sed "s/.*, *\\([0-9.]*\)%* id.*/\\1/"'
+        top_output = sw('top -bn4 | grep "Cpu(s)" |'
+                          ' sed "s/.*: *\\([0-9.]*\)%* us.*/\\1/"'
                           .format(**locals()),
                           'bash')
         cpu_samples = top_output.split('\n')
         if "top" in cpu_samples[0]:
             del cpu_samples[0]
-        for cpu_idle in cpu_samples:
-            cpu_util = cpu_util + (100 - float(cpu_idle))
+        del cpu_samples[0]    
+        for cpu_us in cpu_samples:
+            cpu_util = cpu_util + float(cpu_us)
         cpu_util = str(cpu_util/3)
         print("Average CPU utilization: ")
         print(cpu_util)
