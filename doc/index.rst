@@ -25,7 +25,7 @@ Documentation
 Development
 ===========
 
-- `Project repository. <https://github.com/HPENetworking/topology_lib_{{ cookiecutter.library_name }}>`_
+- `Project repository. <https://github.com/HPENetworking/topology_lib_tcpdump>`_
 
 
 License
