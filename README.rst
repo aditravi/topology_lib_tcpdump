@@ -8,7 +8,7 @@ Tcpdump library
 Documentation
 =============
 
-    {{ cookiecutter.repo_url }}/tree/master/doc
+    https://github.com/HPENetworking/topology_lib_tcpdump/tree/master/doc
 
 
 License

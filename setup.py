@@ -73,7 +73,7 @@ setup(
         'Tcpdump library'
     ),
     long_description=read('README.rst'),
-    url='{{ cookiecutter.repo_url }}/tree/master/doc',
+    url='https://github.com/HPENetworking/topology_lib_tcpdump/tree/master/doc',
     keywords='topology_lib_tcpdump',
 
     classifiers=[
