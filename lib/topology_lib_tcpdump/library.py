@@ -23,10 +23,9 @@ from __future__ import unicode_literals, absolute_import
 from __future__ import print_function, division
 
 from re import match
-
-import datetime
-import re
-import time
+from re import search
+from datetime import datetime
+from time import sleep
 
 # Add your library functions here.
 
@@ -39,11 +38,11 @@ def tcpdump_rate(sw):
         packet_info = sw(sw_cat, 'bash')
         if "packets captured" in packet_info:
             total_packets = packet_info.split()[0]
-        time = re.match(r"^\d\d?:\d\d?:\d\d?\.\d+", packet_info)
+        time = match(r"^\d\d?:\d\d?:\d\d?\.\d+", packet_info)
         if time:
             fields = packet_info.split()
-            timestamp = datetime.datetime.strptime(fields[0],
-                                                   '%H:%M:%S.%f').time()
+            timestamp = datetime.strptime(fields[0],
+                                          '%H:%M:%S.%f').time()
             break
     msec = (timestamp.hour * 60 * 60 + timestamp.minute * 60 +
             timestamp.second) * 1000 + (timestamp.microsecond / 1000)
@@ -56,7 +55,7 @@ def tcpdump_capture_interface(sw, options, interface_id, wait_time, check_cpu):
                     'bash')
     interface_re = (r'(?P<linux_interface>\d)\.' + str(interface_id) +
                     r'\s[\[Up, Running\]]')
-    re_result = re.search(interface_re, cmd_output)
+    re_result = search(interface_re, cmd_output)
     assert re_result
     result = re_result.groupdict()
 
@@ -64,13 +63,13 @@ def tcpdump_capture_interface(sw, options, interface_id, wait_time, check_cpu):
         options + ' -ttttt '
         '> /tmp/interface.cap 2>&1 &'.format(**locals()),
         'bash')
-    time.sleep(wait_time)
+    sleep(wait_time)
     cpu_util = 0
     if check_cpu:
         top_output = sw('top -bn4 | grep "Cpu(s)" |'
-                          ' sed "s/.*: *\\([0-9.]*\)%* us.*/\\1/"'
-                          .format(**locals()),
-                          'bash')
+                        ' sed "s/.*: *\\([0-9.]*\)%* us.*/\\1/"'
+                        .format(**locals()),
+                        'bash')
         cpu_samples = top_output.split('\n')
         if "top" in cpu_samples[0]:
             del cpu_samples[0]
@@ -83,7 +82,7 @@ def tcpdump_capture_interface(sw, options, interface_id, wait_time, check_cpu):
     
     sw('killall tcpdump &'.format(**locals()),
         'bash')
-    dict = {'cpu_util': cpu_util};    
+    dict = {'cpu_util': cpu_util}
     return dict
 
 __all__ = [
