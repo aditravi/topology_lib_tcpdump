@@ -27,15 +27,26 @@ from re import search
 from datetime import datetime
 from time import sleep
 
-# Add your library functions here.
 
-def tcpdump_rate(sw):
+def tcpdump_rate(enode, interface_name):
+    """
+    Get packet rate in packets per second after capture has been run.
+
+    :param enode: Engine node to communicate with.
+    :type enode: topology.platforms.base.BaseNode
+    :param str interface_name: Interface name on which capture was run.
+    :rtype: int
+    :return: The rate of packets catured in packets per second.
+    """
     rate = 0
     total_packets = 0
-    total_lines = sw('cat /tmp/interface.cap | wc -l', 'bash')
+    output = enode('cat /tmp/{}.cap | wc -l'.format(interface_name),
+                   shell='bash')
+    total_lines = output.split("\n")[0]
     for i in range(1, int(total_lines)):
-        sw_cat = 'tail -' + str(i) + ' /tmp/interface.cap | head -1'
-        packet_info = sw(sw_cat, 'bash')
+        cmd = ('tail -{line_num} /tmp/{interface_name}.cap |'
+               ' head -1').format(line_num=i, interface_name=interface_name)
+        packet_info = enode(cmd, shell='bash')
         if "packets captured" in packet_info:
             total_packets = packet_info.split()[0]
         time = match(r"^\d\d?:\d\d?:\d\d?\.\d+", packet_info)
@@ -50,40 +61,67 @@ def tcpdump_rate(sw):
     return rate
 
 
-def tcpdump_capture_interface(sw, options, interface_id, wait_time, check_cpu):
-    cmd_output = sw('ip netns exec swns tcpdump -D'.format(**locals()),
-                    'bash')
-    interface_re = (r'(?P<linux_interface>\d)\.' + str(interface_id) +
+def tcpdump_capture_interface(enode, options, interface_name, capture_time,
+                              num_cpu_samples=0, namespace=None):
+    """
+    Start packet capture using tcpdump.
+
+    :param enode: Engine node to communicate with.
+    :type enode: topology.platforms.base.BaseNode
+    :param str options: The filter options to be passed to tcpdump.
+    :param str interface_name: interface name.
+    :param int capture_time: Time in seconds to capture with tcpdump.
+    :param int num_cpu_samples: Number of CPU samples to get CPU utilization.
+    :param str namespace: The network namespace in which to run the capture.
+    :rtype: dict
+    :return: Dictionary of any metadata with information collected
+     during the capture.
+    """
+    cmd = [
+        'tcpdump -D',
+    ]
+
+    if namespace:
+        cmd.insert(0, 'ip netns exec {} '.format(namespace))
+
+    cmd_output = enode(' '.join(cmd), shell='bash')
+    interface_re = (r'(?P<linux_interface>\d)\.' + str(interface_name) +
                     r'\s[\[Up, Running\]]')
     re_result = search(interface_re, cmd_output)
     assert re_result
     result = re_result.groupdict()
 
-    sw('ip netns exec swns tcpdump -ni ' + result['linux_interface'] +
-        options + ' -ttttt '
-        '> /tmp/interface.cap 2>&1 &'.format(**locals()),
-        'bash')
-    sleep(wait_time)
-    cpu_util = 0
-    if check_cpu:
-        top_output = sw('top -bn4 | grep "Cpu(s)" |'
-                        ' sed "s/.*: *\\([0-9.]*\)%* us.*/\\1/"'
-                        .format(**locals()),
-                        'bash')
+    cmd = [
+        'tcpdump -ni ',
+        result['linux_interface'],
+        options,
+        ' -ttttt > /tmp/',
+        interface_name,
+        '.cap 2>&1 &'
+    ]
+    if namespace:
+        cmd.insert(0, 'ip netns exec {} '.format(namespace))
+
+    enode(''.join(cmd), shell='bash')
+
+    sleep(capture_time)
+    cpu_util = 0.0
+    if num_cpu_samples:
+        cmd = ('top -bn{num_samples}'
+               '| grep "Cpu(s)" | sed "s/.*: *\\([0-9.]*\)%* '
+               'us.*/\\1/"').format(num_samples=(num_cpu_samples + 1))
+        top_output = enode(cmd, shell='bash')
         cpu_samples = top_output.split('\n')
-        if "top" in cpu_samples[0]:
+        if 'top' in cpu_samples[0]:
             del cpu_samples[0]
-        del cpu_samples[0]    
+        del cpu_samples[0]
         for cpu_us in cpu_samples:
-            cpu_util = cpu_util + float(cpu_us)
-        cpu_util = str(cpu_util/3)
-        print("Average CPU utilization: ")
-        print(cpu_util)
-    
-    sw('killall tcpdump &'.format(**locals()),
-        'bash')
-    dict = {'cpu_util': cpu_util}
-    return dict
+            if 'tcpdump' not in cpu_us:
+                cpu_util = cpu_util + float(cpu_us)
+        cpu_util = cpu_util/num_cpu_samples
+
+    enode('killall tcpdump &', shell='bash')
+    return {'cpu_util': cpu_util}
 
 __all__ = [
     'tcpdump_capture_interface',
