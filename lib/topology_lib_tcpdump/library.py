@@ -61,8 +61,8 @@ def tcpdump_rate(enode, interface_name):
     return rate
 
 
-def tcpdump_capture_interface(enode, options, interface_name, capture_time,
-                              num_cpu_samples=0, namespace=None):
+def tcpdump_capture_interface(enode, interface_name, capture_time,
+                              options='', num_cpu_samples=0, namespace=None):
     """
     Start packet capture using tcpdump.
 
@@ -94,6 +94,7 @@ def tcpdump_capture_interface(enode, options, interface_name, capture_time,
     cmd = [
         'tcpdump -ni ',
         result['linux_interface'],
+        ' ',
         options,
         ' -ttttt > /tmp/',
         interface_name,
