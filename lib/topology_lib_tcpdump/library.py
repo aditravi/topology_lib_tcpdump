@@ -61,6 +61,38 @@ def tcpdump_rate(enode, interface_name):
     return rate
 
 
+def tcpdump_analyze(enode, interface_name):
+    """
+    Get packet rate in packets per second after capture has been run.
+    :param enode: Engine node to communicate with.
+    :type enode: topology.platforms.base.BaseNode
+    :param str interface_name: Interface name on which capture was run.
+    :rtype: int
+    :return: The rate of packets catured in packets per second.
+    """
+    rate = 0
+    total_packets = 0
+    output = enode('cat /tmp/{}.cap | wc -l'.format(interface_name),
+                   shell='bash')
+    total_lines = output.split("\n")[0]
+    for i in range(1, int(total_lines)):
+        cmd = ('tail -{line_num} /tmp/{interface_name}.cap |'
+               ' head -1').format(line_num=i, interface_name=interface_name)
+        packet_info = enode(cmd, shell='bash')
+        if "packets captured" in packet_info:
+            total_packets = packet_info.split()[0]
+        time = match(r"^\d\d?:\d\d?:\d\d?\.\d+", packet_info)
+        if time:
+            fields = packet_info.split()
+            timestamp = datetime.strptime(fields[0],
+                                          '%H:%M:%S.%f').time()
+            break
+    msec = (timestamp.hour * 60 * 60 + timestamp.minute * 60 +
+            timestamp.second) * 1000 + (timestamp.microsecond / 1000)
+    rate = int(total_packets) * 1000 / msec
+    return {'rate': cpu_util, 'msec': msec}
+
+
 def tcpdump_capture_interface(enode, interface_name, capture_time,
                               options='', num_cpu_samples=0, namespace=None):
     """
@@ -126,5 +158,6 @@ def tcpdump_capture_interface(enode, interface_name, capture_time,
 
 __all__ = [
     'tcpdump_capture_interface',
-    'tcpdump_rate'
+    'tcpdump_rate',
+    'tcpdump_analyze'
 ]
