@@ -117,8 +117,13 @@ def tcpdump_capture_interface(enode, interface_name, capture_time,
         cmd.insert(0, 'ip netns exec {} '.format(namespace))
 
     cmd_output = enode(' '.join(cmd), shell='bash')
-    interface_re = (r'(?P<linux_interface>\d)\.' + str(interface_name) +
-                    r'\s[\[Up, Running\]]')
+    if namespace:
+        interface_re = (r'(?P<linux_interface>\d)\.' + 
+                        str(interface_name) +
+                        r'\s[\[Up, Running\]]')
+    else:
+        interface_re = (r'(?P<linux_interface>\d)\.' +
+                        str(interface_name))
     re_result = search(interface_re, cmd_output)
     assert re_result
     result = re_result.groupdict()
