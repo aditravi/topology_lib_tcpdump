@@ -90,7 +90,7 @@ def tcpdump_analyze(enode, interface_name):
     msec = (timestamp.hour * 60 * 60 + timestamp.minute * 60 +
             timestamp.second) * 1000 + (timestamp.microsecond / 1000)
     rate = int(total_packets) * 1000 / msec
-    return {'rate': cpu_util, 'msec': msec}
+    return {'rate': rate, 'msec': msec}
 
 
 def tcpdump_capture_interface(enode, interface_name, capture_time,
